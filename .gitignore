@@ -2,3 +2,5 @@ IFTTT_key.txt
 *.pyc
 __pycache__/*
 *.xlsx
+v1/*
+v2/*
