@@ -4,3 +4,4 @@ __pycache__/*
 *.xlsx
 v1/*
 v2/*
+constraints.*

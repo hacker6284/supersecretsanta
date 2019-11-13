@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+# Secret Santa Version 3
+# Author: Zach Mills
+
 import urllib.request as requests
 import urllib.parse as parse
 import itertools
@@ -10,19 +14,31 @@ import argparse
 
 
 parser = argparse.ArgumentParser()
-parser.parse_args()
 group = parser.add_mutually_exclusive_group()
 group.add_argument("-p", "--print", help="prints only, does not ifttt",
                     action="store_true")
 group.add_argument("-t", "--test", help="Just Emergency Test",
                     action="store_true")
-parser.add_argument("-c", "--constraints", help="use constraints.txt")
+parser.add_argument("-c", "--constraints", help="use constraints.txt",
+                    action="store_true")
+parser.add_argument("-v", "--verbose", help="print helpful info",
+                    action="store_true")
+args = parser.parse_args()
 
 if args.constraints:
-    c_file = open("constraints.txt", "w")
+    try:
+        c_file = open("constraints.txt", "r")
+    except FileNotFoundError:
+        print("Constraints file could not be found")
+        exit(1)
 
-    if key_file.mode != 'w':
-        raise NameError("constraint file {} not found").format(file_name)
+    if c_file.mode != 'r':
+        raise NameError("constraint file couldn't be read")
+
+    bak_file = open("constraints.bak", "w")
+    bak_file.write(c_file.read())
+    c_file.close()
+    bak_file.close()
 
 
 def perm_given_index(alist, apermindex):
@@ -55,6 +71,7 @@ wb = load_workbook('santa_old.xlsx')
 ws = wb.active
 
 people = []
+real_names = {}
 person_info = {}
 i = 2
 while (name := ws[i][1].value) is not None:
@@ -63,6 +80,7 @@ while (name := ws[i][1].value) is not None:
         nickname = input(f"What is {name}'s ifttt trigger?")
     people.append(nickname)
     person_info[nickname] = []
+    real_names[nickname] = name
     row = ws[i]
     for cell in row:
         person_info[nickname].append(str(cell.value))
@@ -78,10 +96,12 @@ if not args.constraints:
     # Fill out constraints by user input
     for person in people:
         for other in [p for p in people if p != person]:
-            if input(f"Can {person} buy for {other}?").lower() == 'y':
+            name = real_names[person]
+            other_name = real_names[other]
+            if input(f"Can {name} buy for {other_name}?").lower() == 'n':
                 constraints[person].append(other)
 
-    f = open("constraints.txt", w)
+    f = open("constraints.txt", "w")
     f.write(str(constraints))
     f.close()
 else:
@@ -90,7 +110,10 @@ else:
     f.close()
     constraints = eval(data)
 
-print(people)
+if args.verbose:
+    print(people)
+    print(constraints)
+
 shuffle(people)
 # perm_list = list(itertools.permutations(people))
 # print(len(perm_list))
@@ -115,7 +138,8 @@ while not valid:
     if person_is_good:
         valid = True
         print("Found a proper permutation:")
-        # print(assignments)
+        if args.print:
+            print(assignments)
 
 if args.test:
     # Emergency Test
@@ -158,7 +182,7 @@ Good luck and have fun! '''.format(person_info[receiver][1],
                                    person_info[receiver][11],
                                    person_info[receiver][12])
 
-    if args.print:
+    if args.print and args.verbose:
         print(message)
     else:
         ifttt(people[i], message, "nothing", "nothing", key)
