@@ -1,0 +1,4 @@
+IFTTT_key.txt
+*.pyc
+__pycache__/*
+*.xlsx
