@@ -23,6 +23,9 @@ parser.add_argument("-c", "--constraints", help="use constraints.txt",
                     action="store_true")
 parser.add_argument("-v", "--verbose", help="print helpful info",
                     action="store_true")
+parser.add_argument("-f", "--file", help="Provide filename for excel")
+parser.add_argument("-n", "--nicknames", help="Use dictionary of nicknames",
+                    action="store_true")
 args = parser.parse_args()
 
 if args.constraints:
@@ -38,6 +41,21 @@ if args.constraints:
     bak_file = open("constraints.bak", "w")
     bak_file.write(c_file.read())
     c_file.close()
+    bak_file.close()
+
+if args.nicknames:
+    try:
+        d_file = open("nicknames.txt", "r")
+    except FileNotFoundError:
+        print("Nicknames file could not be found")
+        exit(1)
+
+    if d_file.mode != 'r':
+        raise NameError("nickname file couldn't be read")
+
+    bak_file = open("nicknames.bak", "w")
+    bak_file.write(d_file.read())
+    d_file.close()
     bak_file.close()
 
 
@@ -59,7 +77,7 @@ file_name = "IFTTT_key.txt"
 key_file = open(file_name, "r")
 
 if key_file.mode == 'r':
-    key = list(key_file.readlines())[0]
+    key = key_file.readline().strip()
 else:
     raise NameError("file {} not found").format(file_name)
 
@@ -67,20 +85,37 @@ key_file.close()
 
 # input from spreadsheet
 
-wb = load_workbook('santa_old.xlsx')
+if args.file is None:
+    wb = load_workbook('santa_old.xlsx')
+else:
+    wb = load_workbook(args.file)
 ws = wb.active
 
 people = []
 real_names = {}
 person_info = {}
+
+if args.nicknames:
+    f = open('nicknames.txt','r')
+    data=f.read()
+    f.close()
+    nicknames = eval(data)
+else:
+    nicknames = {}
+
 i = 2
 while (name := ws[i][1].value) is not None:
     nickname = None
-    while nickname is None or nickname in people:
-        nickname = input(f"What is {name}'s ifttt trigger?")
+    if name in nicknames.keys():
+        nickname = nicknames[name]
+    else:
+        while nickname is None or nickname in people:
+            nickname = input(f"What is {name}'s ifttt trigger? ")
+    nickname = nickname.strip('\n')
     people.append(nickname)
     person_info[nickname] = []
     real_names[nickname] = name
+    nicknames[name] = nickname
     row = ws[i]
     for cell in row:
         person_info[nickname].append(str(cell.value))
@@ -109,6 +144,10 @@ else:
     data=f.read()
     f.close()
     constraints = eval(data)
+
+f = open("nicknames.txt", "w")
+f.write(str(nicknames))
+f.close()
 
 if args.verbose:
     print(people)
@@ -139,7 +178,8 @@ while not valid:
         valid = True
         print("Found a proper permutation:")
         if args.print:
-            print(assignments)
+            for assignment in assignments.keys():
+                print(f"{assignment} -> {assignments[assignment]}")
 
 if args.test:
     # Emergency Test
@@ -148,8 +188,7 @@ if args.test:
         '''This is a test of the Super Secret Santa Service System
     You are {}
     If this were not a drill, you would need to buy a gift for {}.
-    If this information is incorrect or undesireable, please call or text \
-    +1 (657) S-S-Santa
+    If this information is incorrect or undesireable, please call or text Zach
         '''.format(person_info[people[i]][1],
                    person_info[assignments[people[i]]][1]),
               "nothing", "nothing", key)
@@ -172,7 +211,7 @@ Is clothing a bad idea: {}
     Socks: {}
     Keep in mind: {}
 
-The price limit is $25!
+The price limit is $20!
 Good luck and have fun! '''.format(person_info[receiver][1],
                                    person_info[receiver][4],
                                    person_info[receiver][7],
@@ -184,5 +223,6 @@ Good luck and have fun! '''.format(person_info[receiver][1],
 
     if args.print and args.verbose:
         print(message)
-    else:
-        ifttt(people[i], message, "nothing", "nothing", key)
+    elif not args.print:
+        # ifttt(people[i], message, "nothing", "nothing", key)
+        print("This would totally send")
